@@ -13,88 +13,112 @@ permissions:
   actions: read
 
 jobs:
-  semgrep:
+  dependency-check:
     runs-on: ubuntu-latest
-    container:
-      image: returntocorp/semgrep:latest
     steps:
       - uses: actions/checkout@v3
         with:
           token: ${{ github.token }}
       
-      - name: Create reports directory
-        run: mkdir -p reports
-      
-      - name: Semgrep Security Scan with Autofix
+      - name: Install OWASP Dependency Check
         run: |
-          semgrep scan \
-            --config "p/python" \
-            --config "p/secrets" \
-            --config "p/owasp-top-ten" \
-            --output reports/semgrep-results.sarif \
-            --sarif \
-            --autofix || true
-          
-      - name: Create Pull Request with fixes
-        uses: peter-evans/create-pull-request@v5
+          sudo apt-get update
+          sudo apt-get install -y default-jre
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v6.5.3/dependency-check-6.5.3-release.zip
+          unzip dependency-check-6.5.3-release.zip -d dependency-check
+          sudo ln -s $(pwd)/dependency-check/bin/dependency-check.sh /usr/local/bin/dependency-check
+      
+      - name: Run OWASP Dependency Check
+        run: |
+          dependency-check --project "MyProject" --scan . --format "ALL" --out dependency-check-report
+      
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v3
         with:
-          token: ${{ github.token }}
-          commit-message: 'fix: auto-fixes from semgrep'
-          title: 'Semgrep Auto-fixes'
-          body: |
-            Автоматические исправления от Semgrep security scan
+          name: dependency-check-report
+          path: dependency-check-report
+          retention-days: 14
+  # semgrep:
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: returntocorp/semgrep:latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         token: ${{ github.token }}
+      
+  #     - name: Create reports directory
+  #       run: mkdir -p reports
+      
+  #     - name: Semgrep Security Scan with Autofix
+  #       run: |
+  #         semgrep scan \
+  #           --config "p/python" \
+  #           --config "p/secrets" \
+  #           --config "p/owasp-top-ten" \
+  #           --output reports/semgrep-results.sarif \
+  #           --sarif \
+  #           --autofix || true
+          
+  #     - name: Create Pull Request with fixes
+  #       uses: peter-evans/create-pull-request@v5
+  #       with:
+  #         token: ${{ github.token }}
+  #         commit-message: 'fix: auto-fixes from semgrep'
+  #         title: 'Semgrep Auto-fixes'
+  #         body: |
+  #           Автоматические исправления от Semgrep security scan
             
-            Этот PR содержит автоматические исправления проблем безопасности, найденных Semgrep.
-            Пожалуйста, проверьте изменения перед merge.
-          branch: semgrep-fixes
-          base: main
-          delete-branch: true
+  #           Этот PR содержит автоматические исправления проблем безопасности, найденных Semgrep.
+  #           Пожалуйста, проверьте изменения перед merge.
+  #         branch: semgrep-fixes
+  #         base: main
+  #         delete-branch: true
           
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: reports/semgrep-results.sarif
+  #     - name: Upload SARIF file
+  #       uses: github/codeql-action/upload-sarif@v2
+  #       with:
+  #         sarif_file: reports/semgrep-results.sarif
 
-      - name: Upload Semgrep Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: semgrep-results
-          path: reports/semgrep-results.sarif
-          retention-days: 14
+  #     - name: Upload Semgrep Results
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: semgrep-results
+  #         path: reports/semgrep-results.sarif
+  #         retention-days: 14
 
-  zap:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ github.token }}
+  # zap:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         token: ${{ github.token }}
       
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v2
+  #       with:
+  #         python-version: '3.x'
       
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+  #     - name: Install dependencies
+  #       run: |
+  #         python3 -m pip install --upgrade pip
+  #         pip3 install -r requirements.txt || true
       
-      - name: Start application
-        run: |
-          nohup python path/to/your/app.py &
+  #     - name: Start application
+  #       run: |
+  #         nohup python3 path/to/your/app.py &
       
-      - name: OWASP ZAP Scan
-        uses: zaproxy/action-full-scan@v0.3.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          target: 'http://localhost:8000' # Замените на URL вашего приложения
-          rules_file_name: '.zap/rules.tsv'
-          docker_name: 'owasp/zap2docker-weekly'
-          cmd_options: '-config api.disablekey=true'
+  #     - name: OWASP ZAP Scan
+  #       uses: zaproxy/action-full-scan@v0.3.0
+  #       with:
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         target: 'http://localhost:8000' # Замените на URL вашего приложения
+  #         docker_name: 'owasp/zap2docker-stable'
+  #         cmd_options: '-config api.disablekey=true'
       
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: zap-report
-          path: /home/runner/work/_temp/zap-report.html
-          retention-days: 14
+  #     - name: Upload ZAP Report
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: zap-report
+  #         path: /home/runner/work/_temp/zap-report.html
+  #         retention-days: 14
