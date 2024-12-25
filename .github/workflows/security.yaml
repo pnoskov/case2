@@ -13,27 +13,31 @@ permissions:
   actions: read
 
 jobs:
-    dependency-check:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v3
-            with:
-              token: ${{ github.token }}
-          
-          - name: OWASP Dependency Check
-            uses: dependency-check/scan-action@v1.2.0
-            with:
-              project: "MyProject"
-              scan: .
-              format: "ALL"
-              out: "dependency-check-report"
-          
-          - name: Upload Dependency Check Report
-            uses: actions/upload-artifact@v3
-            with:
-              name: dependency-check-report
-              path: dependency-check-report
-              retention-days: 14
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ github.token }}
+      
+      - name: Install OWASP Dependency Check
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v6.5.3/dependency-check-6.5.3-release.zip
+          unzip dependency-check-6.5.3-release.zip -d dependency-check
+          sudo ln -s $(pwd)/dependency-check/bin/dependency-check.sh /usr/local/bin/dependency-check
+      
+      - name: Run OWASP Dependency Check
+        run: |
+          dependency-check --project "MyProject" --scan . --format "ALL" --out dependency-check-report
+      
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: dependency-check-report
+          retention-days: 14
   # semgrep:
   #   runs-on: ubuntu-latest
   #   container:
