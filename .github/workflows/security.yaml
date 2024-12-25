@@ -26,11 +26,11 @@ jobs:
           sudo apt-get install -y default-jre
           wget https://github.com/jeremylong/DependencyCheck/releases/download/v6.5.3/dependency-check-6.5.3-release.zip
           unzip dependency-check-6.5.3-release.zip -d dependency-check
-          sudo ln -s $(pwd)/dependency-check/bin/dependency-check.sh /usr/local/bin/dependency-check
+          sudo ln -s $(pwd)/dependency-check/bin/dependency-check.sh /usr/local/bin/dependency-check.sh
       
       - name: Run OWASP Dependency Check
         run: |
-          ./dependency-check/bin/dependency-check.sh --project "MyProject" --scan . --format "ALL" --out dependency-check-report
+          /usr/local/bin/dependency-check.sh --project "MyProject" --scan . --format "ALL" --out dependency-check-report
       
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v3
