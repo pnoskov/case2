@@ -61,3 +61,27 @@ jobs:
           name: semgrep-results
           path: reports/semgrep-results.sarif
           retention-days: 14
+  
+  dependency-check-py:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ github.token }}
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y openjdk-11-jdk
+          wget https://dl.bintray.com/jeremy-long/owasp/dependency-check-6.2.2-release.zip
+          unzip dependency-check-6.2.2-release.zip
+          export PATH=$PATH:$(pwd)/dependency-check/bin
+          dependency-check --version
+          
+      - name: Run Dependency Check
+        run: |
+          dependency-check --scan . --format "ALL" --out reports/dependency-check-results
+          
+      - name: Upload Dependency Check Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-results
