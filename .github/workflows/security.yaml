@@ -30,7 +30,7 @@ jobs:
       
       - name: Run OWASP Dependency Check
         run: |
-          dependency-check --project "MyProject" --scan . --format "ALL" --out dependency-check-report
+          ./dependency-check/bin/dependency-check.sh --project "MyProject" --scan . --format "ALL" --out dependency-check-report
       
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v3
